@@ -1,3 +1,4 @@
+
 import os # Biblioteca para acessar variáveis de ambiente
 import streamlit as st # Framework para criar a interface web do chatbot
 from dotenv import load_dotenv # Função que carrega as variáveis do arquivo .env
@@ -7,9 +8,7 @@ from langchain_chroma import Chroma # Banco de dados vetorial utilizado no proje
 from langchain_groq import ChatGroq # Integra o Python à API da Groq para utilizar o LLM
 from langchain_huggingface import HuggingFaceEmbeddings # Gera embeddings utilizando modelos do Hugging Face
 
-# ==========================================
-# 1. CONFIGURAÇÃO DA API GROQ
-# ==========================================
+#1. CONFIGURAÇÃO DA API GROQ
 
 # Carrega as variáveis armazenadas no arquivo .env
 load_dotenv()
@@ -23,9 +22,8 @@ if not os.getenv("GROQ_API_KEY"):
     # Interrompe a execução da aplicação
     st.stop()
 
-# ==========================================
-# 2. INTERFACE INICIAL
-# ==========================================
+
+#2. INTERFACE INICIAL
 
 # Exibe o título principal da aplicação
 st.title("Chatbot Trabalho Garantido")
@@ -36,110 +34,87 @@ st.write("Faça perguntas sobre o edital do programa.")
 #Para testar: python -m streamlit run app.py
 #ctrl c para parar a execução do streamlit
 
-# ==========================================
-# 3. CARREGAMENTO DO DOCUMENTO PDF
-# ==========================================
 
-# Cria o carregador do arquivo PDF
-carregador = PyPDFLoader("EDITAL-Trabalho-Garantido-26-2.pdf")
-
-# Lê o PDF e transforma seu conteúdo em objetos Document
-documentos = carregador.load()
-
-# Exibe a quantidade de páginas carregadas
-#st.write("Quantidade de páginas carregadas:", len(documentos))
-
-# Exibe o texto extraído da primeira página
-#st.subheader("Texto da primeira página")
-
-#st.write(documentos[0].page_content)
-
-# ==========================================
-# 4. DIVISÃO DO DOCUMENTO EM CHUNKS
-# ==========================================
-
-# Configura a divisão dos textos em trechos menores
-splitter = RecursiveCharacterTextSplitter(
-    chunk_size=1000,    # Tamanho máximo de cada chunk em caracteres
-    chunk_overlap=200   # Sobreposição entre os chunks
-)
-
-# Divide os documentos em chunks
-chunks = splitter.split_documents(documentos)
-
-# ==========================================
-# 5. MODELO DE EMBEDDINGS
-# ==========================================
-
-# Carrega o modelo de embeddings do Hugging Face. O modelo transforma textos em vetores numéricos
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-
-# ==========================================
-# 6. BANCO VETORIAL CHROMA
-# ==========================================
-
-# Cria o banco vetorial a partir dos chunks
-# O Chroma utiliza o modelo configurado para gerar os embeddings e armazenar textos, vetores e metadados
-banco = Chroma.from_documents(documents=chunks, embedding=embeddings)
-
-# ==========================================
-# 7. CONFIGURAÇÃO DO RETRIEVER
-# ==========================================
-
-# Configura o recuperador de informações do Chroma
-# Ele será responsável por buscar os chunks mais
-# relevantes para cada pergunta do usuário
-# o recuperador buscará os cinco chunks mais semelhantes à pergunta
-retriever = banco.as_retriever(search_kwargs={"k": 5})
-
-# ==========================================
-# 8. CONFIGURAÇÃO DO LLM
-# ==========================================
-
-# Configura o modelo de linguagem acessado pela Groq
-# O LLM será responsável por gerar as respostas
-# com base nos trechos recuperados do edital
-# Configura a temperatura do modelo, que influencia a variabilidade das respostas.
-# Valores menores tendem a produzir respostas mais consistentes e menos variadas.
-llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0)
-
-# ==========================================
-# 9. PREPARAÇÃO DO RAG
-# ==========================================
+#3. PREPARAÇÃO DO RAG
 
 # Armazena em cache os recursos criados pela função
 # Evita reconstruir o banco vetorial a cada interação
 @st.cache_resource
 def iniciar_rag():
 
-    # Carrega o edital em formato PDF
-    documentos = PyPDFLoader("EDITAL-Trabalho-Garantido-26-2.pdf").load()
+    #3.1. CARREGAMENTO DO DOCUMENTO PDF
 
-    # Configura a divisão do texto em chunks
-    #divide o chunk em 1000 caracteres e 200 caracteres para transitar entre um chunk e outro
-    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    # Cria o carregador do arquivo PDF
+    carregador = PyPDFLoader("EDITAL_Trabalho_Garantido.pdf")
 
-    # Divide o conteúdo do edital em chunks
+    # Lê o PDF e transforma seu conteúdo em objetos Document
+    documentos = carregador.load()
+
+    # Exibe a quantidade de páginas carregadas
+    #st.write("Quantidade de páginas carregadas:", len(documentos))
+
+    # Exibe o texto extraído da primeira página
+    #st.subheader("Texto da primeira página")
+
+    #st.write(documentos[0].page_content)
+
+
+    #3.2. DIVISÃO DO DOCUMENTO EM CHUNKS
+
+    # Configura a divisão dos textos em trechos menores
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,    # Tamanho máximo de cada chunk em caracteres
+        chunk_overlap=200   # Sobreposição entre os chunks
+    )
+
+    # Divide os documentos em chunks
     chunks = splitter.split_documents(documentos)
 
-    # Carrega o modelo de embeddings do Hugging Face
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-    # Cria o banco vetorial Chroma, gera e armazena os embeddings dos chunks
-    banco = Chroma.from_documents(documents=chunks,embedding=embeddings)
+    #3.3. MODELO DE EMBEDDINGS
 
-    # Configura a recuperação dos 5 chunks mais relevantes
+    # Carrega o modelo de embeddings do Hugging Face. O modelo transforma textos em vetores numéricos
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
+
+
+    #3.4. BANCO VETORIAL CHROMA
+
+    # Cria o banco vetorial a partir dos chunks
+    # O Chroma utiliza o modelo configurado para gerar os embeddings e armazenar textos, vetores e metadados
+    banco = Chroma.from_documents(
+        documents=chunks,
+        embedding=embeddings
+    )
+
+
+    #3.5. CONFIGURAÇÃO DO RETRIEVER
+
+    # Configura o recuperador de informações do Chroma
+    # Ele será responsável por buscar os chunks mais
+    # relevantes para cada pergunta do usuário
+    # o recuperador buscará os cinco chunks mais semelhantes à pergunta
     retriever = banco.as_retriever(search_kwargs={"k": 5})
 
-    # Configura o modelo de linguagem pela API Groq
-    llm = ChatGroq(model="openai/gpt-oss-120b",temperature=0)
+
+    #3.6. CONFIGURAÇÃO DO LLM
+
+    # Configura o modelo de linguagem acessado pela Groq
+    # O LLM será responsável por gerar as respostas
+    # com base nos trechos recuperados do edital
+    # Configura a temperatura do modelo, que influencia a variabilidade das respostas.
+    # Valores menores tendem a produzir respostas mais consistentes e menos variadas.
+    llm = ChatGroq(
+        model="openai/gpt-oss-120b",
+        temperature=0
+    )
 
     # Retorna os componentes que serão utilizados no chatbot
     return retriever, llm
 
-# ==========================================
-# 10. INICIALIZAÇÃO DO CHATBOT
-# ==========================================
+
+#4. INICIALIZAÇÃO DO CHATBOT
 
 try:
 
@@ -158,9 +133,7 @@ except Exception as erro:
     st.stop()
 
 
-# ==========================================
-# 11. HISTÓRICO DE MENSAGENS
-# ==========================================
+#5. HISTÓRICO DE MENSAGENS
 
 # Verifica se a lista de mensagens já existe na sessão
 if "mensagens" not in st.session_state:
@@ -181,9 +154,7 @@ for mensagem in st.session_state.mensagens:
         st.markdown(mensagem["content"])
 
 
-# ==========================================
-# 12. RECEBER A PERGUNTA DO USUÁRIO
-# ==========================================
+#6. RECEBER A PERGUNTA DO USUÁRIO
 
 # Exibe o campo para o usuário digitar sua pergunta
 if pergunta := st.chat_input("Digite sua pergunta..."):
@@ -193,11 +164,13 @@ if pergunta := st.chat_input("Digite sua pergunta..."):
         st.write(pergunta)
 
     # Armazena a pergunta no histórico de mensagens
-    st.session_state.mensagens.append({"role": "user","content": pergunta})
+    st.session_state.mensagens.append({
+        "role": "user",
+        "content": pergunta
+    })
 
-    # ==========================================
-    # 13. RECUPERAR INFORMAÇÕES E GERAR RESPOSTA
-    # ==========================================
+
+    #7. RECUPERAR INFORMAÇÕES E GERAR RESPOSTA
 
     # Cria o espaço para a resposta do chatbot
     with st.chat_message("assistant"):
@@ -210,7 +183,9 @@ if pergunta := st.chat_input("Digite sua pergunta..."):
                 documentos = retriever.invoke(pergunta)
 
                 # Reúne os textos recuperados em um único contexto
-                contexto = "\n\n".join(doc.page_content for doc in documentos)
+                contexto = "\n\n".join(
+                    doc.page_content for doc in documentos
+                )
 
                 # Monta as instruções enviadas ao modelo de linguagem
                 prompt = f"""
@@ -236,7 +211,10 @@ if pergunta := st.chat_input("Digite sua pergunta..."):
                 st.markdown(resposta)
 
                 # Armazena a resposta no histórico
-                st.session_state.mensagens.append({"role": "assistant","content": resposta})
+                st.session_state.mensagens.append({
+                    "role": "assistant",
+                    "content": resposta
+                })
 
             except Exception as erro:
                 # Exibe uma mensagem caso ocorra algum erro
